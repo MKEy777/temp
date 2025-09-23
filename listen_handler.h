@@ -1,6 +1,5 @@
 #pragma once
 
-#include <winsock2.h>
 #include "event_handler.h"
 #include "sock_handler.h"
 #include "reactor.h"

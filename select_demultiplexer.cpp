@@ -1,8 +1,8 @@
-#include <winsock2.h>
 #include <vector>
 #include "event_demultiplexer.h"
 #include "event_handler.h"
 
+// 这个文件内容与你原来的一致，只是确保顶部的 #include <winsock2.h> 被删除了
 class SelectDemultiplexer : public EventDemultiplexer {
 private:
     fd_set read_set;
@@ -24,17 +24,18 @@ public:
         timeval tv = { timeout / 1000, (timeout % 1000) * 1000 };
 
         int max_fd = 0;
-        for (auto& pair : handlers) {
-            if ((int)pair.first > max_fd) max_fd = (int)pair.first;
+        if (!handlers.empty()) {
+            max_fd = handlers.rbegin()->first;
         }
 
         int num_events = select(max_fd + 1, &temp_read, &temp_write, &temp_err, timeout == 0 ? nullptr : &tv);
         if (num_events > 0) {
-            for (auto& pair : handlers) {
-                Handle fd = pair.first;
-                if (FD_ISSET(fd, &temp_read)) pair.second->handle_read();
-                if (FD_ISSET(fd, &temp_write)) pair.second->handle_write();
-                if (FD_ISSET(fd, &temp_err)) pair.second->handle_error();
+            // 必须复制一份，因为在循环中 handler 可能会被删除
+            auto handlers_copy = handlers;
+            for (auto const& [fd, handler] : handlers_copy) {
+                if (FD_ISSET(fd, &temp_read)) handler->handle_read();
+                if (FD_ISSET(fd, &temp_write)) handler->handle_write();
+                if (FD_ISSET(fd, &temp_err)) handler->handle_error();
             }
         }
         return num_events;

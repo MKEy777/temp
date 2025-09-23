@@ -2,10 +2,12 @@
 #include "listen_handler.h"
 #include "thread_pool.h"
 #include <thread>
+#include <iostream>
 
 ThreadPool* thread_pool = nullptr;
 
-int main() {
+// 将原来的 main 函数改名为 run_server
+int run_server() {
     thread_pool = new ThreadPool(4);
 
     Reactor* sub_reactor = new Reactor();
@@ -22,6 +24,6 @@ int main() {
     delete main_reactor;
     delete sub_reactor;
     delete thread_pool;
-    WSACleanup();
+
     return 0;
 }
