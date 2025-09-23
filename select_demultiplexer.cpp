@@ -2,7 +2,6 @@
 #include "event_demultiplexer.h"
 #include "event_handler.h"
 
-// 这个文件内容与你原来的一致，只是确保顶部的 #include <winsock2.h> 被删除了
 class SelectDemultiplexer : public EventDemultiplexer {
 private:
     fd_set read_set;
