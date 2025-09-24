@@ -3,6 +3,7 @@
 #include <cerrno>
 #include <string.h>
 #include <iostream>
+#include <cstdio>
 
 SockHandler::SockHandler(Handle fd, Reactor* r) : sock_fd(fd), reactor(r) {}
 
@@ -20,14 +21,13 @@ void SockHandler::handle_read() {
             {
                 std::lock_guard<std::mutex> lock(buf_mutex);
                 write_buf += processed;
+				std::cout << write_buf << std::endl;
             }
             reactor->modify(sock_fd, WRITE);
             });
-    }
-    else if (n == 0) { // 客户端正常关闭
+    }else if (n == 0) { // 客户端正常关闭
         handle_error();
-    }
-    else { // n < 0，发生错误
+    }else {
         // 在非阻塞模式下，EAGAIN 或 EWOULDBLOCK 表示没有数据可读，是正常情况
         if (errno != EAGAIN && errno != EWOULDBLOCK) {
             perror("recv error");

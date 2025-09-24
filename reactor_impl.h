@@ -6,48 +6,21 @@
 
 class ReactorImplementation {
 private:
-    EventDemultiplexer* demux;
-    std::map<Handle, EventHandler*> handlers;
-    std::mutex handlers_mutex;
+	EventDemultiplexer* demux;// 事件分发器
+	std::map<Handle, EventHandler*> handlers;// 句柄到事件处理器的映射
+	std::mutex handlers_mutex;
 
 public:
-    ReactorImplementation() : demux(new SelectDemultiplexer()) {}
-    ~ReactorImplementation() { delete demux; }
+    // 构造函数和析构函数声明
+    ReactorImplementation();
+    ~ReactorImplementation();
 
-    void regist(EventHandler* handler, Event evt) {
-        std::lock_guard<std::mutex> lock(handlers_mutex);
-        Handle fd = handler->get_handle();
-        handlers[fd] = handler;
-        demux->regist(fd, evt);
-    }
-
-    void remove(Handle fd) {
-        std::lock_guard<std::mutex> lock(handlers_mutex);
-        demux->remove(fd);
-        auto it = handlers.find(fd);
-        if (it != handlers.end()) {
-            it->second->handle_close();
-            delete it->second;
-        }
-        handlers.erase(fd);
-    }
-
-    void modify(Handle fd, Event evt) {
-        std::lock_guard<std::mutex> lock(handlers_mutex);
-        demux->remove(fd);
-        demux->regist(fd, evt);
-    }
-
-    void event_loop(int timeout) {
-        while (true) {
-            std::map<Handle, EventHandler*> temp_handlers;
-            {
-                std::lock_guard<std::mutex> lock(handlers_mutex);
-                temp_handlers = handlers;
-            }
-            demux->wait_event(temp_handlers, timeout);
-        }
-    }
+    // 成员函数声明
+    void regist(EventHandler* handler, Event evt);
+    void remove(Handle fd);
+    void modify(Handle fd, Event evt);
+    //不断调用 demux->wait_event()，然后触发相应的回调
+    void event_loop(int timeout);
 };
 
 Reactor::Reactor() : impl(new ReactorImplementation()) {}

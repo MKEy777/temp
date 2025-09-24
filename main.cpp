@@ -1,7 +1,6 @@
 #include <iostream>
 #include <string.h>
 
-// 声明我们将要从其他文件调用的函数
 int run_server();
 int run_client();
 

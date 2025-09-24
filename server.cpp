@@ -6,7 +6,6 @@
 
 ThreadPool* thread_pool = nullptr;
 
-// 将原来的 main 函数改名为 run_server
 int run_server() {
     thread_pool = new ThreadPool(4);
 
@@ -16,7 +15,7 @@ int run_server() {
         });
 
     Reactor* main_reactor = new Reactor();
-    ListenHandler* acceptor = new ListenHandler(8080, sub_reactor);
+    ListenHandler* acceptor = new ListenHandler(9527, sub_reactor);
     main_reactor->regist(acceptor, READ);
     main_reactor->event_loop();
 
