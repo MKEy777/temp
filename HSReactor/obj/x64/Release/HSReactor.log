@@ -1,0 +1,29 @@
+﻿  正在清理远程项目目录
+  正在验证源
+  正在将源远程复制到“127.0.0.1”
+  正在验证体系结构
+  正在验证体系结构
+  正在启动远程生成
+  正在编译源:
+  client.cpp
+D:\VS\work\HSReactor\client.cpp(43,30): warning : conversion from ‘ssize_t’ {aka ‘long int’} to ‘int’ may change value [-Wconversion]
+D:\VS\work\HSReactor\client.cpp(43,30): warning :    43 |         int bytes_sent = send(sock, message.c_str(), message.length(), 0);
+D:\VS\work\HSReactor\client.cpp(43,30): warning :       |                          ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+D:\VS\work\HSReactor\client.cpp(47,27): warning : conversion from ‘ssize_t’ {aka ‘long int’} to ‘int’ may change value [-Wconversion]
+D:\VS\work\HSReactor\client.cpp(47,27): warning :    47 |         int valread = recv(sock, buffer, 1024, 0);
+D:\VS\work\HSReactor\client.cpp(47,27): warning :       |                       ~~~~^~~~~~~~~~~~~~~~~~~~~~~
+  listen_handler.cpp
+D:\VS\work\HSReactor\listen_handler.cpp(19,27): warning : conversion from ‘int’ to ‘__uint16_t’ {aka ‘short unsigned int’} may change value [-Wconversion]
+D:\VS\work\HSReactor\listen_handler.cpp(19,27): warning :    19 |     addr.sin_port = htons(port);
+D:\VS\work\HSReactor\listen_handler.cpp(19,27): warning :       |                           ^~~~
+  main.cpp
+  reactor_impl.cpp
+  select_demultiplexer.cpp
+  server.cpp
+  sock_handler.cpp
+D:\VS\work\HSReactor\sock_handler.cpp(16,17): warning : conversion from ‘ssize_t’ {aka ‘long int’} to ‘int’ may change value [-Wconversion]
+D:\VS\work\HSReactor\sock_handler.cpp(16,17): warning :    16 |     int n = recv(sock_fd, read_buf, sizeof(read_buf), 0);
+D:\VS\work\HSReactor\sock_handler.cpp(16,17): warning :       |             ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  thread_pool.cpp
+  正在链接对象
+  HSReactor.vcxproj -> D:\VS\work\HSReactor\bin\x64\Release\HSReactor.out
