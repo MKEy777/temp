@@ -21,6 +21,8 @@ public:
     virtual int wait_event(std::map<Handle, EventHandler*>& handlers, int timeout = 0) = 0;
 	//注册socket、事件
     virtual bool regist(Handle handle, Event evt) = 0;
+    //修改socket、事件
+    virtual bool modify(Handle handle, Event evt) = 0;
     //移除socket
     virtual bool remove(Handle handle) = 0;
 };

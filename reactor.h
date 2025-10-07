@@ -2,7 +2,7 @@
 
 #include "event_handler.h"
 
-class ReactorImplementation;  // 前向声明
+class ReactorImplementation;  // 保持前向声明
 
 class Reactor {
 private:

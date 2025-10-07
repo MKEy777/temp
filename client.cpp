@@ -19,7 +19,7 @@ int run_client() {
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(9527); 
 
-    if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
+    if (inet_pton(AF_INET, "192.168.6.129", &serv_addr.sin_addr) <= 0) {
         std::cerr << "Invalid address" << std::endl;
         close(sock);
         return 1;

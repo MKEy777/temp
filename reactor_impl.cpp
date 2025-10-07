@@ -1,11 +1,14 @@
-// reactor_impl.cpp
 #include "reactor_impl.h"
-#include "event_demultiplexer.h" 
-#include "select_demultiplexer.h"
+#include "reactor.h" // 包含 reactor.h
+#include "epoll_demultiplexer.h" // 确保使用 epoll
 #include <iostream>
 
-ReactorImplementation::ReactorImplementation() : demux(new SelectDemultiplexer()) {}
-ReactorImplementation::~ReactorImplementation() { delete demux; }
+// ReactorImplementation 成员函数的实现
+ReactorImplementation::ReactorImplementation() : demux(new EpollDemultiplexer()) {}
+
+ReactorImplementation::~ReactorImplementation() {
+    delete demux;
+}
 
 void ReactorImplementation::regist(EventHandler* handler, Event evt) {
     std::lock_guard<std::mutex> lock(handlers_mutex);
@@ -27,13 +30,33 @@ void ReactorImplementation::remove(Handle fd) {
 
 void ReactorImplementation::modify(Handle fd, Event evt) {
     std::lock_guard<std::mutex> lock(handlers_mutex);
-    demux->remove(fd);
-    demux->regist(fd, evt);
+    demux->modify(fd, evt);
 }
 
 void ReactorImplementation::event_loop(int timeout) {
     while (true) {
-        // 直接传递handlers映射的引用，以便wait_event操作最新数据
         demux->wait_event(handlers, timeout);
     }
+}
+
+Reactor::Reactor() : impl(new ReactorImplementation()) {}
+
+Reactor::~Reactor() {
+    delete impl;
+}
+
+void Reactor::regist(EventHandler* handler, Event evt) {
+    impl->regist(handler, evt);
+}
+
+void Reactor::remove(Handle fd) {
+    impl->remove(fd);
+}
+
+void Reactor::modify(Handle fd, Event evt) {
+    impl->modify(fd, evt);
+}
+
+void Reactor::event_loop(int timeout) {
+    impl->event_loop(timeout);
 }
