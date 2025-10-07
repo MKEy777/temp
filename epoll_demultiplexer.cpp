@@ -57,6 +57,7 @@ bool EpollDemultiplexer::modify(Handle handle, Event evt) {
         return false;
     }
     std::cout << "Modified FD: " << handle << " for events: " << evt << std::endl;
+    std::cout << "----------------------------------------- " << std::endl;
     return true;
 }
 
@@ -69,14 +70,14 @@ bool EpollDemultiplexer::remove(Handle handle) {
 }
 
 int EpollDemultiplexer::wait_event(std::map<Handle, EventHandler*>& handlers, int timeout) {
-    int num_events = epoll_wait(epoll_fd, events.data(), events.size(), timeout);
+    int num_events = epoll_wait(epoll_fd, events.data(), static_cast<int>(events.size()), timeout);
 
     if (num_events < 0) {
         perror("epoll_wait failed");
         return 0;
     }
 
-    for (int i = 0; i < num_events; ++i) {
+    for (int i = 0; i < (int)num_events; ++i) {
         Handle fd = events[i].data.fd;
         auto it = handlers.find(fd);
         if (it == handlers.end()) continue;
@@ -96,9 +97,9 @@ int EpollDemultiplexer::wait_event(std::map<Handle, EventHandler*>& handlers, in
     }
 
     // 如果事件数组满了，进行扩容
-    if (num_events == events.size()) {
+    if (num_events == static_cast<int>(events.size())) {
         events.resize(events.size() * 2);
     }
 
-    return num_events;
+    return (int)num_events;
 }

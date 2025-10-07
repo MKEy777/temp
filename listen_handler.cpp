@@ -16,7 +16,7 @@ ListenHandler::ListenHandler(int port, Reactor* sub) : sub_reactor(sub) {
 
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    addr.sin_port = htons(port);
+    addr.sin_port = htons((short unsigned int)(port));
     if (bind(listen_fd, (struct sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR) {
         perror("bind failed");
         close(listen_fd);

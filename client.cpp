@@ -40,11 +40,11 @@ int run_client() {
 
         if (message == "exit" || std::cin.eof()) break;
 
-        int bytes_sent = send(sock, message.c_str(), message.length(), 0);
+        ssize_t bytes_sent = send(sock, message.c_str(), message.length(), 0);
         std::cout << "Sent " << bytes_sent << " bytes." << std::endl;
 
         char buffer[1024] = "";
-        int valread = recv(sock, buffer, 1024, 0);
+        size_t valread = recv(sock, buffer, 1024, 0);
         if (valread > 0) {
             std::cout << "Server response: " << std::string(buffer, valread) << std::endl;
         }
