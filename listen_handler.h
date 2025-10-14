@@ -1,25 +1,21 @@
 #pragma once
-
 #include "event_handler.h"
-#include "sock_handler.h"
 #include "reactor.h"
+#include "chat_server.h" 
+#include "event_demultiplexer.h"
 
 class ListenHandler : public EventHandler {
-private:
-    Handle listen_fd;
-    sockaddr_in addr;
-    Reactor* sub_reactor;
-
 public:
-    ListenHandler(int port, Reactor* sub);
+    ListenHandler(int port, Reactor* sub_reactors, ChatServer* server); // (ÐÞ¸Ä)
     ~ListenHandler();
-
-    Handle get_handle() const override;
-    void handle_read() override;
-    void handle_write() override;
-    void handle_error() override;
-    void handle_close() override;
-
+    virtual Handle get_handle() const;
+    virtual void handle_read();
+    virtual void handle_write();
+    virtual void handle_error();
+    virtual void handle_close();
 private:
     void set_non_blocking(Handle fd);
+    Handle listen_fd_;
+    Reactor* sub_reactors_;
+    ChatServer* chat_server_;
 };

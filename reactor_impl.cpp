@@ -1,6 +1,5 @@
 #include "reactor_impl.h"
-#include "reactor.h" // 包含 reactor.h
-#include "epoll_demultiplexer.h" // 确保使用 epoll
+#include "reactor.h"
 #include <iostream>
 
 // ReactorImplementation 成员函数的实现
@@ -39,7 +38,9 @@ void ReactorImplementation::event_loop(int timeout) {
     }
 }
 
-Reactor::Reactor() : impl(new ReactorImplementation()) {}
+Reactor::Reactor() {
+    impl = new ReactorImplementation();
+}
 
 Reactor::~Reactor() {
     delete impl;

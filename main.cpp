@@ -1,25 +1,44 @@
+﻿#include "reactor.h"
+#include "reactor_impl.h"
+#include "listen_handler.h"
+#include "thread_pool.h"
+#include "chat_server.h" 
+#include <thread>
 #include <iostream>
-#include <string.h>
 
-int run_server();
-int run_client();
+// 全局变量
+ThreadPool* thread_pool = nullptr;
+ChatServer* chat_service = nullptr; 
+
+int run_server() {
+    thread_pool = new ThreadPool(4);
+    chat_service = new ChatServer(); 
+
+    // sub_reactor 运行在独立的线程中
+    Reactor* sub_reactor = new Reactor();
+    std::thread sub_thread([sub_reactor]() {
+        sub_reactor->event_loop();
+        });
+    // main_reactor 负责 listen
+    Reactor* main_reactor = new Reactor();
+    // 将 chat_service 指针传给 ListenHandler
+    ListenHandler* acceptor = new ListenHandler(9527, sub_reactor, chat_service);
+    main_reactor->regist(acceptor, READ);
+
+    std::cout << "Server starting main event loop..." << std::endl;
+    main_reactor->event_loop();
+
+    sub_thread.join();
+
+    delete main_reactor;
+    delete sub_reactor;
+    delete thread_pool;
+    delete chat_service; 
+    return 0;
+}
+
 
 int main(int argc, char* argv[]) {
-    if (argc != 2) {
-        std::cerr << "Usage: " << argv[0] << " [s | c]" << std::endl;
-        std::cerr << "  s: start as server" << std::endl;
-        std::cerr << "  c: start as client" << std::endl;
-        return 1;
-    }
-
-    if (strcmp(argv[1], "s") == 0) {
-        return run_server();
-    }
-    else if (strcmp(argv[1], "c") == 0) {
-        return run_client();
-    }
-    else {
-        std::cerr << "Invalid argument. Use 's' for server or 'c' for client." << std::endl;
-        return 1;
-    }
+    run_server();
+    return 0;
 }
