@@ -1,8 +1,8 @@
 #pragma once
-
 #include "event_handler.h"
+#include <functional>
 
-class ReactorImplementation;  // 保持前向声明
+class ReactorImplementation;
 
 class Reactor {
 private:
@@ -15,5 +15,8 @@ public:
     void regist(EventHandler* handler, Event evt);
     void remove(Handle fd);
     void modify(Handle fd, Event evt);
-    void event_loop(int timeout = 0);
+    void event_loop();
+    void quit(); // 退出事件循环
+
+    void queue_in_loop(std::function<void()> task);
 };

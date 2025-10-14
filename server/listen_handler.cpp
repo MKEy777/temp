@@ -55,7 +55,6 @@ Handle ListenHandler::get_handle() const {
     return listen_fd_;
 }
 
-// 当有新连接到来时，创建 ClientHandler
 void ListenHandler::handle_read() {
     sockaddr_in client_addr;
     socklen_t addr_len = sizeof(client_addr);
@@ -64,15 +63,23 @@ void ListenHandler::handle_read() {
         set_non_blocking(client_fd);
         std::cout << "Accepted new connection with fd " << client_fd << std::endl;
 
-        // 创建新的 ClientHandler，并将 sub-reactor 和 chat_server 实例传递进去
         EventHandler* client_handler = new ClientHandler(client_fd, sub_reactors_, chat_server_);
         sub_reactors_->regist(client_handler, READ);
+
+        // 将“连接已建立”的后续处理任务，派发给 sub-reactor 线程去执行
+        sub_reactors_->queue_in_loop([client_handler]() {
+            // dynamic_cast 是安全的类型转换
+            ClientHandler* ch = dynamic_cast<ClientHandler*>(client_handler);
+            if (ch) {
+                ch->post_connection_established();
+            }
+            });
     }
     else {
-        // 如果 accept 失败，打印错误信息
         std::cerr << "accept failed: " << strerror(errno) << std::endl;
     }
 }
+
 
 // 监听句柄不需要写操作
 void ListenHandler::handle_write() {

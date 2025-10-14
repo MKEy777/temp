@@ -22,6 +22,7 @@ public:
     void send_message(const std::string& json_message);
     std::string get_username() const { return username_; }
     void set_username(const std::string& name) { username_ = name; }
+    void post_connection_established();
 
 private:
     Handle sock_fd_;
