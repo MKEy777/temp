@@ -21,10 +21,10 @@ void ReactorImplementation::remove(Handle fd) {
     demux->remove(fd);
     auto it = handlers.find(fd);
     if (it != handlers.end()) {
-        it->second->handle_close();
-        delete it->second;
+        it->second->handle_close(); // 先调用回调
+        delete it->second;          // 然后安全地删除
+        handlers.erase(it);
     }
-    handlers.erase(fd);
 }
 
 void ReactorImplementation::modify(Handle fd, Event evt) {

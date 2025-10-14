@@ -1,7 +1,6 @@
 #include "client_handler.h"
-#include "thread_pool.h"
 #include <iostream>
-#include <unistd.h> 
+#include <unistd.h>
 #include <cerrno>
 #include <string.h>
 
@@ -10,9 +9,7 @@ ClientHandler::ClientHandler(Handle fd, Reactor* r, ChatServer* server)
     chat_server_->on_client_connected(this);
 }
 
-ClientHandler::~ClientHandler() {
-    close(sock_fd_); // 在析构时关闭文件描述符
-}
+ClientHandler::~ClientHandler() {}
 
 Handle ClientHandler::get_handle() const {
     return sock_fd_;
@@ -26,27 +23,24 @@ void ClientHandler::handle_read() {
             read_buf_.append(buffer, n);
         }
         else if (n == 0) {
-            handle_error(); // 客户端主动关闭
+            handle_error();
             return;
         }
-        else { // n < 0
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                break; // 数据已读完
-            }
+        else {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) break;
             perror("recv error");
             handle_error();
             return;
         }
     }
 
-    // 使用换行符 '\n' 分隔每个JSON消息
     size_t pos;
     while ((pos = read_buf_.find('\n')) != std::string::npos) {
         std::string json_data = read_buf_.substr(0, pos);
         read_buf_.erase(0, pos + 1);
         if (!json_data.empty()) {
-            thread_pool->enqueue([this, data = std::move(json_data)]() {
-                this->chat_server_->process_message(this, data);
+            thread_pool->enqueue([this, json_data]() {
+                this->chat_server_->process_message(this, json_data);
                 });
         }
     }
@@ -58,7 +52,8 @@ void ClientHandler::send_message(const std::string& json_message) {
         std::lock_guard<std::mutex> lock(write_buf_mutex_);
         write_buf_ += message_with_newline;
     }
-    reactor_->regist(this, WRITE); // 通知 Reactor: 我有数据要写
+    // 正确做法：修改事件，在 READ 的基础上增加 WRITE
+    reactor_->modify(get_handle(), static_cast<Event>(READ | WRITE));
 }
 
 void ClientHandler::handle_write() {
@@ -66,7 +61,8 @@ void ClientHandler::handle_write() {
     {
         std::lock_guard<std::mutex> lock(write_buf_mutex_);
         if (write_buf_.empty()) {
-            reactor_->remove(sock_fd_);
+            // 正确做法：写完了，修改事件，移除 WRITE，只保留 READ
+            reactor_->modify(get_handle(), READ);
             return;
         }
         to_send.swap(write_buf_);
@@ -91,18 +87,19 @@ void ClientHandler::handle_write() {
         write_buf_.insert(0, to_send.substr(sent_bytes));
     }
     else {
-        reactor_->remove(sock_fd_); // 写完了，移除写事件
+        // 正确做法：全部写完了，同样修改回只读事件
+        reactor_->modify(get_handle(), READ);
     }
 }
 
 void ClientHandler::handle_error() {
-    chat_server_->on_client_disconnected(sock_fd_);
-    reactor_->remove(sock_fd_);
-    // handler 的内存会由 reactor_impl 自动管理和释放
+
+    reactor_->remove(get_handle());
 }
 
 void ClientHandler::handle_close() {
     chat_server_->on_client_disconnected(sock_fd_);
+    // 注意：这里的 delete this; 将由 reactor_impl 中的 remove 逻辑调用
+    // 为了安全，我们只关闭socket
     close(sock_fd_);
-    delete this; // 自我销毁，释放内存
 }
