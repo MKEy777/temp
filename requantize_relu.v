@@ -1,110 +1,76 @@
 `timescale 1ns / 1ps
 
+/*
+ * 模块: requantize_relu_q17_2stage
+ * 功能: 优化的2级流水线版本 (Add -> Shift/ReLU/Sat)
+ */
 module requantize_relu #(
     parameter IN_W       = 32,
     parameter BIAS_W     = 32,
     parameter OUT_W      = 8,
-    parameter SCALE_W    = 32,
-    parameter SHIFT_BITS = 31
+    parameter SHIFT_BITS = 14
 ) (
     input clk,
     input rst_n,
     input i_valid,
     input signed [IN_W-1:0]   i_acc,
     input signed [BIAS_W-1:0] i_bias,
-    input signed [SCALE_W-1:0] i_scale,
-    input signed [OUT_W-1:0]  i_zero_point,
     
     output reg signed [OUT_W-1:0] o_data,
     output reg o_valid
 );
-    localparam Q_MIN = -(2**(OUT_W-1));
-    localparam Q_MAX = (2**(OUT_W-1)) - 1;
+    localparam Q_MAX      = (2**(OUT_W-1)) - 1;
+    localparam Q_MIN_RELU = {OUT_W{1'b0}};
 
     // --- 流水线寄存器定义 ---
 
-    // Pipeline Stage 1: 输入锁存
+    // Pipeline Stage 1: 偏置加法结果
     reg p1_valid;
-    reg signed [IN_W-1:0]   p1_acc;
-    reg signed [BIAS_W-1:0] p1_bias;
-    reg signed [SCALE_W-1:0] p1_scale;
-    reg signed [OUT_W-1:0]  p1_zero_point;
+    reg signed [IN_W:0] p1_acc_biased; // 扩展1位以防加法溢出
 
-    // Pipeline Stage 2: 偏置加法结果
-    reg p2_valid;
-    reg signed [IN_W:0]      p2_acc_biased;
-    reg signed [SCALE_W-1:0] p2_scale;
-    reg signed [OUT_W-1:0]   p2_zero_point;
-
-    // Pipeline Stage 3: 乘法结果
-    reg p3_valid;
-    reg signed [IN_W+SCALE_W:0] p3_scaled_acc;
-    reg signed [OUT_W-1:0]      p3_zero_point;
+    // Stage 2: 组合逻辑
     wire signed [IN_W:0] shifted_acc;
-    wire signed [IN_W:0] final_acc;
+    wire signed [IN_W:0] final_val;
 
-    // 使用assign语句定义组合逻辑
-    assign shifted_acc = p3_scaled_acc >>> SHIFT_BITS;
-    assign final_acc   = shifted_acc + $signed(p3_zero_point);
-
+    assign shifted_acc = p1_acc_biased >>> SHIFT_BITS;
+    assign final_val   = shifted_acc;
 
     // --- 流水线逻辑 ---
 
-    // Stage 1: 输入锁存 always 块
-    always @(posedge clk) begin
+    // Stage 1: 锁存输入并立即执行加法
+    always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             p1_valid <= 1'b0;
+            p1_acc_biased <= {(IN_W+1){1'b0}};
         end else begin
             p1_valid <= i_valid;
             if (i_valid) begin
-                p1_acc        <= i_acc;
-                p1_bias       <= i_bias;
-                p1_scale      <= i_scale;
-                p1_zero_point <= i_zero_point;
+                // 加法在第一级的组合逻辑中完成
+                p1_acc_biased <= $signed(i_acc) + $signed(i_bias);
             end
         end
     end
 
-    // Stage 2: 偏置加法 always 块
-    always @(posedge clk) begin
-        if (!rst_n) begin
-            p2_valid <= 1'b0;
-        end else begin
-            p2_valid <= p1_valid;
-            if (p1_valid) begin
-                p2_acc_biased <= $signed(p1_acc) + $signed(p1_bias);
-                p2_scale      <= p1_scale;
-                p2_zero_point <= p1_zero_point;
-            end
-        end
-    end
-
-    always @(posedge clk) begin
-        if (!rst_n) begin
-            p3_valid <= 1'b0;
-        end else begin
-            p3_valid <= p2_valid;
-            if (p2_valid) begin
-                p3_scaled_acc <= p2_acc_biased * $signed(p2_scale);
-                p3_zero_point <= p2_zero_point;
-            end
-        end
-    end
-
-    always @(posedge clk) begin
+    // Stage 2: 移位, ReLU, 饱和, 和输出
+    always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             o_valid <= 1'b0;
             o_data  <= {OUT_W{1'b0}};
         end else begin
-            o_valid <= p3_valid;
-            if (p3_valid) begin
-                if (final_acc < 0) begin
-                    o_data <= {OUT_W{1'b0}}; 
-                end else if (final_acc > Q_MAX) begin
+            o_valid <= p1_valid;
+            if (p1_valid) begin
+                // 1. ReLU: 小于0的值钳位到0
+                if (final_val < Q_MIN_RELU) begin
+                    o_data <= Q_MIN_RELU; 
+                // 2. 饱和: 大于Q1.7最大值(127)的值钳位到127
+                end else if (final_val > Q_MAX) begin
                     o_data <= Q_MAX; 
+                // 3. 有效值
                 end else begin
-                    o_data <= final_acc[OUT_W-1:0];
+                    o_data <= final_val[OUT_W-1:0];
                 end
+            end else begin
+                o_data <= {OUT_W{1'b0}};
             end
         end
     end
