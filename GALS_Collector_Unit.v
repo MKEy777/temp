@@ -2,7 +2,7 @@
 
 module GALS_Collector_Unit #(
     parameter OUT_NEURONS      = 64,
-    parameter WATCHDOG_TIMEOUT = 10000 
+    parameter WATCHDOG_TIMEOUT = 16384 
 ) (
     input  wire                      local_clk,
     input  wire                      rst_n,
