@@ -1,77 +1,77 @@
 `timescale 1ns / 1ps
 
 /*
- * 模块: SNN_Engine [重构版]
- * 功能: SNN 后端 GALS Master FSM (总指挥)。
- * 职责:
- * 1. 例化 16x 阵列 (64 PEs) 和 16x 32-bit BRAMs。
- * 2. 例化 层间编码器 和 决策单元。
- * 3. 实现 3 周期 FSM (dense_1, dense_2, dense_3)。
- * 4. 控制时钟使能 (CE) 和 BRAM 偏移量，实现层同步。
+ * ???: SNN_Engine [?????]
+ * ????: SNN ??? GALS Master FSM (?????)??
+ * ???:
+ * 1. [Bug 2] ????????? SNN ??? (D_i) ROM??
+ * 2. [Bug 3] ???????λ??? (unpacker) 
+ * generate ???е?λ????????????
  */
 module SNN_Engine #(
-    // --- 核心 Q1.7 参数 ---
+    // --- ???? Q1.7 ???? ---
     parameter TIME_W      = 8,
     parameter WEIGHT_W    = 8,
     parameter ACC_W       = 32,
-    parameter ADDR_W      = 10, // SNN 输入(160) + 最大偏移量(224) < 1024
+    parameter ADDR_W      = 10, // SNN ????(160) + ????????(224) < 1024
     
-    // --- 架构参数 ---
-    parameter NUM_ARRAYS    = 16, // 16 阵列 = 64 PEs
+    // --- ??????? ---
+    parameter NUM_ARRAYS    = 16, // 16 ???? = 64 PEs
     
-    // --- 软件拓扑 (160 -> 64 -> 32 -> 3) ---
+    // --- ???????? (160 -> 64 -> 32 -> 3) ---
     parameter SNN_IN_LEN     = 160,
     parameter DENSE1_NEURONS = 64,
     parameter DENSE2_NEURONS = 32,
     parameter DENSE3_NEURONS = 3,
     
-    // --- 权重 BRAM 偏移量 (基于 SNN 拓扑) ---
+    // --- ??? BRAM ????? (???? SNN ????) ---
     parameter BRAM_OFFSET_D1 = 10'd0,
-    parameter BRAM_OFFSET_D2 = 10'd160, // D1 偏移 = D1 输入 (160)
-    parameter BRAM_OFFSET_D3 = 10'd224, // D2 偏移 = 160 + D1 输出 (64)
+    parameter BRAM_OFFSET_D2 = 10'd160, // D1 ??? = D1 ???? (160)
+    parameter BRAM_OFFSET_D3 = 10'd224, // D2 ??? = 160 + D1 ??? (64)
 
-    // --- t_min (Q1.7 示例值) ---
+    // --- t_min (Q1.7 ????) ---
     parameter signed [TIME_W-1:0] T_MIN_D1_Q17 = 8'd0,
     parameter signed [TIME_W-1:0] T_MIN_D2_Q17 = 8'd20,
     parameter signed [TIME_W-1:0] T_MIN_D3_Q17 = 8'd40
 )(
-    input  wire                      local_clk, // SNN 后端的本地时钟
+    input  wire                      local_clk, // SNN ??????????
     input  wire                      rst_n,
 
-    // --- 顶层控制 ---
-    input  wire                      i_accelerator_start, // 启动 SNN
+    // --- ??????? ---
+    input  wire                      i_accelerator_start, // ???? SNN
     output reg                       o_accelerator_done,
     output reg [$clog2(DENSE3_NEURONS)-1:0] o_predicted_class,
 
-    // --- 接口: GALS_Encoder_Unit (信使 1) ---
-    input  wire                      i_enc_aer_req,    // (来自 ANN->SNN Encoder)
+    // --- ???: GALS_Encoder_Unit (??? 1) ---
+    input  wire                      i_enc_aer_req,    // (???? ANN->SNN Encoder)
     input  wire signed [TIME_W-1:0]  i_enc_aer_time,
-    input  wire [ADDR_W-1:0]         i_enc_aer_addr,   // (假设已扩展到 ADDR_W)
+    input  wire [ADDR_W-1:0]         i_enc_aer_addr,   // (??????????? ADDR_W)
     input  wire                      i_enc_done,
-    output reg                       o_enc_aer_ack,
+    output reg                       o_enc_aer_ack
 
-    // --- 接口: Threshold (D_i) ROM ---
-    input  wire signed [WEIGHT_W-1:0] i_threshold_data
+    // --- ???: Threshold (D_i) ROM ---
+    // [???Bug 2] ??? i_threshold_data ??????????????
+    // input  wire signed [WEIGHT_W-1:0] i_threshold_data
 );
     localparam D1_ADDR_W = $clog2(DENSE1_NEURONS); // 6
     localparam D2_ADDR_W = $clog2(DENSE2_NEURONS); // 5
 
-    // GALS Master FSM 状态
+    // GALS Master FSM ??
     localparam S_IDLE        = 5'b00000;
     localparam S_DENSE1_RUN  = 5'b00001;
-    localparam S_DENSE1_READ = 5'b00010; // 读 D1 电位 (64次)
+    localparam S_DENSE1_READ = 5'b00010; // ?? D1 ??λ (64??)
     localparam S_DENSE2_RUN  = 5'b00100;
-    localparam S_DENSE2_READ = 5'b00101; // 读 D2 电位 (32次)
+    localparam S_DENSE2_READ = 5'b00101; // ?? D2 ??λ (32??)
     localparam S_DENSE3_RUN  = 5'b01000;
-    localparam S_DENSE3_READ = 5'b01001; // 读 D3 电位 (3次)
-    localparam S_ARGMAX_REG  = 5'b01010; // 寄存 ArgMax 输入
+    localparam S_DENSE3_READ = 5'b01001; // ?? D3 ??λ (3??)
+    localparam S_ARGMAX_REG  = 5'b01010; // ??? ArgMax ????
     localparam S_ARGMAX_WAIT = 5'b01100;
     localparam S_DONE        = 5'b01101;
     localparam S_ERROR       = 5'b10000;
     
     reg [4:0] state, next_state;
 
-    // --- 内部连线与寄存器 ---
+    // --- ????????????? ---
     reg  [NUM_ARRAYS-1:0]    array_clk_en;
     reg  [4*NUM_ARRAYS-1:0]  array_pe_enable;
     reg  [ADDR_W-1:0]        current_bram_offset;
@@ -81,15 +81,15 @@ module SNN_Engine #(
     wire [NUM_ARRAYS-1:0]     array_aer_ack;
     wire [NUM_ARRAYS-1:0]     array_error;
     
-    // 读/写 FSM 计数器
+    // ??/д FSM ??????
     reg  [D1_ADDR_W-1:0]     rw_cnt; // (0-63)
     
-    // SNN_Array_4PE 输出 (16 组 [4*ACC_W] 的扁平向量)
+    // SNN_Array_4PE ??? (16 ?? [4*ACC_W] ????????)
     wire signed [4*ACC_W-1:0] potentials_array_flat [0:NUM_ARRAYS-1];
-    // 解包后的 64 个 32-bit 电位
+    // ?????? 64 ?? 32-bit ??λ
     wire signed [ACC_W-1:0]   potentials_unpacked [0:NUM_ARRAYS*4-1];
 
-    // Encoder 2 (Buffer) 连线
+    // Encoder 2 (Buffer) ????
     wire                      buf_aer_req;
     wire signed [TIME_W-1:0]  buf_aer_time;
     wire [D1_ADDR_W-1:0]      buf_aer_addr;
@@ -103,17 +103,20 @@ module SNN_Engine #(
     reg                       buf_aer_ack;
     wire [D1_ADDR_W-1:0]      buf_threshold_addr;
     
-    // ArgMax 连线
+    // [???Bug 2] ????: SNN ??? ROM ????
+    wire signed [WEIGHT_W-1:0] threshold_data_wire;
+    
+    // ArgMax ????
     reg  signed [DENSE3_NEURONS*ACC_W-1:0] argmax_potentials_flat;
     reg                       argmax_i_valid;
     wire                      argmax_o_valid;
     wire [$clog2(DENSE3_NEURONS)-1:0] argmax_o_class;
     
-    // AER MUX (选择信使)
+    // AER MUX (??????)
     wire aer_req_mux  = (state == S_DENSE1_RUN) ? i_enc_aer_req : buf_aer_req;
     wire signed [TIME_W-1:0] aer_time_mux = (state == S_DENSE1_RUN) ? i_enc_aer_time : buf_aer_time;
     
-    // AER 地址 MUX (带零扩展)
+    // AER ??? MUX (???????)
     wire [ADDR_W-1:0] aer_addr_mux_padded;
     assign aer_addr_mux_padded = (state == S_DENSE1_RUN) ? 
         i_enc_aer_addr :
@@ -125,11 +128,11 @@ module SNN_Engine #(
     end
     
     always @(*) begin
-        // 1. 设置默认值，防止产生锁存器 (latch)
+        // 1. ??????????????????????? (latch)
         o_enc_aer_ack = 1'b0;
         buf_aer_ack = 1'b0;
 
-        // 2. 根据状态进行 MUX 赋值
+        // 2. ?????????? MUX ???
         if (state == S_DENSE1_RUN) begin
             o_enc_aer_ack = &array_aer_ack;
         end 
@@ -138,15 +141,26 @@ module SNN_Engine #(
         end
     end
     
-    // --- 1. 例化 Intermediate Buffer Encoder (D1->D2, D2->D3) ---
+    // --- [???Bug 2] 1. ???? SNN ??? (D_i) ROM ---
+    Parameter_ROM #(
+        .DATA_WIDTH ( WEIGHT_W ),  // 8-bit
+        .ADDR_WIDTH ( D1_ADDR_W ), // 6-bit (0-63)
+        .MEM_FILE   ( "snn_thresholds.mem" ) // ?????ROM???
+    ) threshold_rom_inst (
+        .clk        ( local_clk ),
+        .addr       ( buf_threshold_addr ), // ?? Buffer Encoder ????
+        .data_out   ( threshold_data_wire ) // ????? Buffer Encoder
+    );
+
+    // --- 2. ???? Intermediate Buffer Encoder (D1->D2, D2->D3) ---
     Intermediate_Buffer_Encoder #(
         .MAX_NEURONS ( DENSE1_NEURONS ),
         .POTENTIAL_W ( ACC_W ), .TIME_W ( TIME_W ),
         .ADDR_W      ( D1_ADDR_W ),
-        .THRESHOLD_W ( WEIGHT_W ), .VJ_SHIFT_BITS( 16 ) // 示例
+        .THRESHOLD_W ( WEIGHT_W ), .VJ_SHIFT_BITS( 16 ) // ???
     ) buffer_encoder_inst (
         .local_clk ( local_clk ), .rst_n ( rst_n ),
-        .i_clk_en  ( 1'b1 ), // (FSM 状态已控制)
+        .i_clk_en  ( 1'b1 ), // (FSM ???????)
         
         .i_potential_wr_en  ( buf_potential_wr_en ),
         .i_potential_wr_addr( buf_potential_wr_addr ),
@@ -162,18 +176,18 @@ module SNN_Engine #(
         .o_aer_time( buf_aer_time ),
         .o_aer_addr( buf_aer_addr ),
         
-        .o_threshold_rom_addr( buf_threshold_addr ),
-        .i_threshold_data    ( i_threshold_data )
+        .o_threshold_rom_addr( buf_threshold_addr ), // ????? ROM
+        .i_threshold_data    ( threshold_data_wire ) // [???Bug 2]
     );
     
-    // --- 2. 例化 16x RAM 和 16x Array ---
+    // --- 3. ???? 16x RAM ?? 16x Array ---
     genvar i;
     generate
         for (i = 0; i < NUM_ARRAYS; i = i + 1) begin : gen_snn_backend
             
             wire signed [31:0] ram_data_out;
             
-            // ** 关键: 最终BRAM地址 = MUX后的地址 + FSM偏移量 **
+            // ** ???: ????BRAM??? = MUX????? + FSM????? **
             wire [ADDR_W-1:0]  final_bram_addr = aer_addr_mux_padded + current_bram_offset;
             
             SEE_Weight_BRAM #(
@@ -186,7 +200,6 @@ module SNN_Engine #(
                 .i_wr_en_b   ( 1'b0 ), .i_wr_addr_b(0), .i_wr_data_b(0)
             );
             
-
             SNN_Array_4PE #(
                 .TIME_W(TIME_W), .WEIGHT_W(WEIGHT_W), .ADDR_W(ADDR_W), .ACC_W(ACC_W)
             ) array_inst (
@@ -205,21 +218,22 @@ module SNN_Engine #(
                 
                 .o_array_aer_ack ( array_aer_ack[i] ),
                 .o_array_error   ( array_error[i] ),
-                .o_array_busy    ( /* 未连接 */ ),
+                .o_array_busy    ( /* δ???? */ ),
                 
                 .o_potential_flat( potentials_array_flat[i] )
             );
             
-            // ** 关键: 解包 16x 阵列的 64x 电位 **
+            // ** ???: ??? 16x ???е? 64x ??λ **
             genvar j;
             for (j = 0; j < 4; j = j + 1) begin
+                // [???Bug 3] ????? j*ACC_W ????? ACC_W
                 assign potentials_unpacked[i*4 + j] = 
-                    potentials_array_flat[i][(j+1)*ACC_W-1 -: j*ACC_W];
+                    potentials_array_flat[i][(j+1)*ACC_W-1 -: ACC_W];
             end
         end
     endgenerate
     
-    // --- 3. 例化 ArgMax (决策) ---
+    // --- 4. ???? ArgMax (????) ---
     ArgMax_Unit #(
         .VEC_LEN(DENSE3_NEURONS), .DATA_W(ACC_W)
     ) argmax_inst (
@@ -230,14 +244,14 @@ module SNN_Engine #(
         .o_predicted_class ( argmax_o_class )
     );
 
-    // --- 4. GALS Master FSM (组合) ---
+    // --- 5. GALS Master FSM (???) ---
     integer k;
     always @(*) begin
         next_state = state;
         o_accelerator_done = 1'b0;
         o_predicted_class  = 0;
         
-        // 默认值
+        // ????
         array_clk_en           = {NUM_ARRAYS{1'b0}};
         array_pe_enable        = {4*NUM_ARRAYS{1'b0}};
         current_bram_offset    = BRAM_OFFSET_D1;
@@ -253,7 +267,7 @@ module SNN_Engine #(
         
         argmax_i_valid        = 1'b0;
         
-        // FSM 状态转移
+        // FSM ?????
         case (state)
             S_IDLE: begin
                 array_reset_potential = {NUM_ARRAYS{1'b1}};
@@ -262,19 +276,19 @@ module SNN_Engine #(
             end
             
             S_DENSE1_RUN: begin
-                // 启用 D1: 64 PEs (16 阵列)
+                // ???? D1: 64 PEs (16 ????)
                 for (k = 0; k < DENSE1_NEURONS/4; k = k + 1)
                     array_clk_en[k] = 1'b1;
                 array_pe_enable     = {4*NUM_ARRAYS{1'b1}};
                 current_bram_offset = BRAM_OFFSET_D1;
                 current_t_min       = T_MIN_D1_Q17;
                 
-                if (i_enc_done) // 等待 GALS_Encoder 完成
+                if (i_enc_done) // ??? GALS_Encoder ???
                     next_state = S_DENSE1_READ;
             end
             
             S_DENSE1_READ: begin
-                // 读 D1 电位 (64次) -> Buffer
+                // ?? D1 ??λ (64??) -> Buffer
                 buf_potential_wr_en   = 1'b1;
                 buf_potential_wr_addr = rw_cnt;
                 buf_potential_wr_data = potentials_unpacked[rw_cnt];
@@ -284,7 +298,7 @@ module SNN_Engine #(
             end
 
             S_DENSE2_RUN: begin
-                // 启用 D2: 32 PEs (8 阵列)
+                // ???? D2: 32 PEs (8 ????)
                 for (k = 0; k < DENSE2_NEURONS/4; k = k + 1)
                     array_clk_en[k] = 1'b1;
                 for (k = 0; k < DENSE2_NEURONS; k = k + 1)
@@ -293,7 +307,7 @@ module SNN_Engine #(
                 current_bram_offset = BRAM_OFFSET_D2;
                 current_t_min       = T_MIN_D2_Q17;
                 
-                // 启动 Buffer 广播 D1 -> D2
+                // ???? Buffer ?? D1 -> D2
                 buf_broadcast_start = 1'b1;
                 buf_t_max_layer     = T_MIN_D2_Q17; // t_max_d1 = t_min_d2
                 buf_neuron_count    = DENSE1_NEURONS;
@@ -303,7 +317,7 @@ module SNN_Engine #(
             end
             
             S_DENSE2_READ: begin
-                // 读 D2 电位 (32次) -> Buffer
+                // ?? D2 ??λ (32??) -> Buffer
                 buf_potential_wr_en   = 1'b1;
                 buf_potential_wr_addr = rw_cnt;
                 buf_potential_wr_data = potentials_unpacked[rw_cnt];
@@ -313,7 +327,7 @@ module SNN_Engine #(
             end
 
             S_DENSE3_RUN: begin
-                // 启用 D3: 3 PEs (1 阵列)
+                // ???? D3: 3 PEs (1 ????)
                 array_clk_en[0]     = 1'b1;
                 array_pe_enable[0]  = 1'b1;
                 array_pe_enable[1]  = 1'b1;
@@ -322,7 +336,7 @@ module SNN_Engine #(
                 current_bram_offset = BRAM_OFFSET_D3;
                 current_t_min       = T_MIN_D3_Q17;
                 
-                // 启动 Buffer 广播 D2 -> D3
+                // ???? Buffer ?? D2 -> D3
                 buf_broadcast_start = 1'b1;
                 buf_t_max_layer     = T_MIN_D3_Q17;
                 buf_neuron_count    = DENSE2_NEURONS;
@@ -332,17 +346,17 @@ module SNN_Engine #(
             end
 
             S_DENSE3_READ: begin
-                // 读 D3 电位 (3次) -> 准备送入 ArgMax
+                // ?? D3 ??λ (3??) -> ??????? ArgMax
                 next_state = S_ARGMAX_REG;
             end
             
             S_ARGMAX_REG: begin
-                // 时序修正: 寄存 ArgMax 的输入
+                // ???????: ??? ArgMax ??????
                 next_state = S_ARGMAX_WAIT;
             end
 
             S_ARGMAX_WAIT: begin
-                argmax_i_valid = 1'b1; // 单周期脉冲
+                argmax_i_valid = 1'b1; // ??????????
                 if (argmax_o_valid)
                     next_state = S_DONE;
             end
@@ -355,18 +369,18 @@ module SNN_Engine #(
             end
             
             S_ERROR: begin
-                next_state = S_ERROR; // 停滞, 等待复位
+                next_state = S_ERROR; // ???, ?????λ
             end
             
             default: next_state = S_IDLE;
         endcase
         
-        if (|array_error) begin // 任何阵列出错
+        if (|array_error) begin // ?κ????г???
             next_state = S_ERROR;
         end
     end
 
-    // --- 5. GALS Master FSM (时序) ---
+    // --- 6. GALS Master FSM (???) ---
     always @(posedge local_clk or negedge rst_n) begin
         if (!rst_n) begin
             state <= S_IDLE;
@@ -376,7 +390,7 @@ module SNN_Engine #(
         end else begin
             state <= next_state;
             
-            // FSM 计数器 (用于读电位)
+            // FSM ?????? (???????λ)
             case (state)
                 S_DENSE1_READ:
                     rw_cnt <= rw_cnt + 1;
@@ -386,7 +400,7 @@ module SNN_Engine #(
                     rw_cnt <= 0;
             endcase
             
-            // 时序修正: 寄存 ArgMax 的输入
+            // ???????: ??? ArgMax ??????
             if (state == S_DENSE3_READ) begin
                  argmax_potentials_flat <= {
                     potentials_unpacked[2], 
@@ -395,7 +409,7 @@ module SNN_Engine #(
                  };
             end
             
-            // 时序修正: ArgMax i_valid 单周期脉冲
+            // ???????: ArgMax i_valid ??????????
             if (state == S_ARGMAX_WAIT) begin
                  argmax_i_valid <= 1'b1;
             end else begin
