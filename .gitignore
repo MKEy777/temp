@@ -1,0 +1,57 @@
+############################
+# Visual Studio
+############################
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+############################
+# Build output
+############################
+Debug/
+Release/
+x64/
+x86/
+*/Debug/
+*/Release/
+*/x64/
+*/x86/
+
+############################
+# IntelliSense
+############################
+*.VC.db
+*.VC.opendb
+ipch/
+
+############################
+# MFC / Win32
+############################
+*.aps
+*.ncb
+*.pch
+*.obj
+*.idb
+*.ilk
+*.pdb
+*.tlog
+*.log
+
+############################
+# CMake (如果以后用)
+############################
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+out/
+
+############################
+# Others
+############################
+*.exe
+*.dll
+*.lib
+*.exp
