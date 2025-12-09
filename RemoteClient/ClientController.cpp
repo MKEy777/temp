@@ -63,9 +63,10 @@ int CClientController::DownFile(CString strPath)
 	if (dlg.DoModal() == IDOK) {
 		m_strRemote = strPath;
 		m_strLocal = dlg.GetPathName();
-		FILE* pFile = fopen(m_strLocal, "wb+");
-		if (pFile == NULL) {
-			AfxMessageBox(_T("本地没有权限保存该文件，或者文件无法创建！！！"));
+		FILE* pFile = nullptr;
+		if (fopen_s(&pFile, m_strLocal, "wb+") != 0)
+		{
+			AfxMessageBox(_T("无法创建文件！"));
 			return -1;
 		}
 		SendCommandPacket(m_remoteDlg, 4, false, (BYTE*)(LPCSTR)m_strRemote, m_strRemote.GetLength(), (WPARAM)pFile);

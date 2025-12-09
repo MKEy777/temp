@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "ClientSocket.h"
 
+
 CClientSocket* CClientSocket::m_instance = NULL;
 CClientSocket::CHelper CClientSocket::m_helper;
 
@@ -238,6 +239,8 @@ bool CClientSocket::Send(const CPacket& pack)
 	std::string strOut;
 	pack.Data(strOut);
 	return send(m_sock, strOut.c_str(), strOut.size(), 0) > 0;
+	//int send(int sockfd, const void *buf, size_t len, int flags);
+
 }
 
 void CClientSocket::SendPack(UINT nMsg, WPARAM wParam, LPARAM lParam)

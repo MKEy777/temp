@@ -11,7 +11,7 @@
 #endif
 
 #include <afx.h>
-#include <vld.h>
+//#include <vld.h>
 #include <afxwin.h>         // MFC 核心组件和标准组件
 #include <afxext.h>         // MFC 扩展
 #ifndef _AFX_NO_OLE_SUPPORT

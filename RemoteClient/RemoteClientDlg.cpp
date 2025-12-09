@@ -413,7 +413,7 @@ void CRemoteClientDlg::OnDeleteFile()
 	strFile = strPath + strFile;
 	int ret = CClientController::getInstance()->SendCommandPacket(GetSafeHwnd(), 9, true, (BYTE*)(LPCSTR)strFile, strFile.GetLength());
 	if (ret < 0) {
-		AfxMessageBox("删除文件命令执行失败！！！");
+		MessageBox(_T("删除文件命令执行失败！！！"));
 	}
 	LoadFileCurrent();
 }
@@ -428,7 +428,7 @@ void CRemoteClientDlg::OnRunFile()
 	strFile = strPath + strFile;
 	int ret = CClientController::getInstance()->SendCommandPacket(GetSafeHwnd(), 3, true, (BYTE*)(LPCSTR)strFile, strFile.GetLength());
 	if (ret < 0) {
-		AfxMessageBox("打开文件命令执行失败！！！");
+		MessageBox("打开文件命令执行失败！！！");
 	}
 }
 
