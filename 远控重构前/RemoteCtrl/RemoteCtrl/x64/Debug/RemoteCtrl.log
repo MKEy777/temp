@@ -1,0 +1,24 @@
+﻿  pch.cpp
+  LockInfoDialog.cpp
+  RemoteCtrl.cpp
+C:\Users\VECTOR\Desktop\Linux\Linux-C-\远控\远控重构前\RemoteCtrl\RemoteCtrl\ServerSocket.h(13,19): warning C4267: “=”: 从“size_t”转换到“DWORD”，可能丢失数据
+  (编译源文件“/RemoteCtrl.cpp”)
+  
+C:\Users\VECTOR\Desktop\Linux\Linux-C-\远控\远控重构前\RemoteCtrl\RemoteCtrl\ServerSocket.h(178,60): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据
+  (编译源文件“/RemoteCtrl.cpp”)
+  
+C:\Users\VECTOR\Desktop\Linux\Linux-C-\远控\远控重构前\RemoteCtrl\RemoteCtrl\RemoteCtrl.cpp(74,25): warning C4244: “=”: 从“intptr_t”转换到“int”，可能丢失数据
+  (编译源文件“/RemoteCtrl.cpp”)
+  
+C:\Users\VECTOR\Desktop\Linux\Linux-C-\远控\远控重构前\RemoteCtrl\RemoteCtrl\RemoteCtrl.cpp(374,43): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据
+  (编译源文件“/RemoteCtrl.cpp”)
+  
+  ServerSocket.cpp
+C:\Users\VECTOR\Desktop\Linux\Linux-C-\远控\远控重构前\RemoteCtrl\RemoteCtrl\ServerSocket.h(13,19): warning C4267: “=”: 从“size_t”转换到“DWORD”，可能丢失数据
+  (编译源文件“/ServerSocket.cpp”)
+  
+C:\Users\VECTOR\Desktop\Linux\Linux-C-\远控\远控重构前\RemoteCtrl\RemoteCtrl\ServerSocket.h(178,60): warning C4267: “参数”: 从“size_t”转换到“int”，可能丢失数据
+  (编译源文件“/ServerSocket.cpp”)
+  
+  正在生成代码...
+  RemoteCtrl.vcxproj -> C:\Users\VECTOR\Desktop\Linux\Linux-C-\远控\远控重构前\RemoteCtrl\x64\Debug\RemoteCtrl.exe
